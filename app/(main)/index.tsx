@@ -75,6 +75,10 @@ export default function PostList() {
                   {new Date(item.createdAt.toDate()).toLocaleString()}
                 </Text>
               )}
+              <View style={styles.postStats}>
+                <Text style={styles.postStatText}>좋아요: {item.likesCount || 0}</Text>
+                <Text style={styles.postStatText}>댓글: {item.commentsCount || 0}</Text>
+              </View>
             </TouchableOpacity>
           )}
         />
@@ -152,6 +156,15 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: "#999",
     marginTop: 5,
+  },
+  postStats: {
+    flexDirection: 'row',
+    marginTop: 10,
+  },
+  postStatText: {
+    fontSize: 12,
+    color: '#666',
+    marginRight: 15,
   },
   writeButton: {
     position: "absolute",
