@@ -3,8 +3,10 @@ import { useState } from "react";
 import { Text, TextInput, TouchableOpacity, View, Alert, StyleSheet, ActivityIndicator, Image } from "react-native";
 import { useAuth } from "../../lib/AuthContext";
 import { createPost } from "../../lib/firestore/posts";
-import * as ImagePicker from 'expo-image-picker'; // Import ImagePicker
-import { uploadImageAndGetURL } from "../../lib/firebase/storage"; // Import uploadImageAndGetURL
+import * as ImagePicker from 'expo-image-picker';
+import { uploadImageAndGetURL } from "../../lib/firebase/storage";
+import { doc, collection } from "firebase/firestore"; // Import doc and collection
+import { db } from "../../lib/firebase/firebaseConfig"; // Import db
 
 export default function WritePost() {
   const router = useRouter();
@@ -12,10 +14,9 @@ export default function WritePost() {
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [loading, setLoading] = useState(false);
-  const [imageUri, setImageUri] = useState(null); // New state for selected image URI
+  const [imageUri, setImageUri] = useState(null);
 
   const pickImage = async () => {
-    // Request media library permissions
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
       Alert.alert('권한 필요', '이미지를 선택하려면 미디어 라이브러리 접근 권한이 필요합니다.');
@@ -52,22 +53,25 @@ export default function WritePost() {
 
     setLoading(true);
     let imageUrl = null;
+    let postId = doc(collection(db, "posts")).id; // Generate postId upfront
+
     try {
       if (imageUri) {
-        // Upload image to Firebase Storage
-        const imagePath = `post_images/${user.uid}/${Date.now()}`;
+        // Extract filename from URI
+        const filename = imageUri.split('/').pop();
+        const imagePath = `post_images/${user.uid}/${postId}/${filename}`;
         imageUrl = await uploadImageAndGetURL(imageUri, imagePath);
       }
 
-      await createPost({
+      await createPost(postId, { // Pass postId to createPost
         title,
         content,
         authorId: user.uid,
         authorEmail: user.email,
-        imageUrl: imageUrl, // Store image URL in Firestore
+        imageUrl: imageUrl,
       });
       Alert.alert("성공", "게시글이 성공적으로 작성되었습니다.");
-      router.back(); // Go back to the post list
+      router.back();
     } catch (error) {
       console.error("Error creating post: ", error);
       Alert.alert("오류", "게시글 작성에 실패했습니다.");
