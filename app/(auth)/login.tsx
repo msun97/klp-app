@@ -18,7 +18,27 @@ export default function Login() {
       await login(email, password);
       // Redirection is handled by AuthContext in _layout.tsx
     } catch (error) {
-      Alert.alert("로그인 실패", error.message);
+      let errorMessage = "알 수 없는 오류가 발생했습니다.";
+      if (error.message) {
+        // Attempt to parse Firebase specific error messages for better UX
+        if (error.message.includes("auth/invalid-email")) {
+          errorMessage = "유효하지 않은 이메일 주소입니다.";
+        } else if (error.message.includes("auth/user-not-found")) {
+          errorMessage = "등록되지 않은 사용자입니다.";
+        } else if (error.message.includes("auth/wrong-password")) {
+          errorMessage = "비밀번호가 올바르지 않습니다.";
+        } else if (error.message.includes("auth/too-many-requests")) {
+          errorMessage = "너무 많은 로그인 시도가 있었습니다. 잠시 후 다시 시도해주세요.";
+        } else if (error.message.includes("Password must be at least 6 characters long.")) {
+          errorMessage = "비밀번호는 6자 이상이어야 합니다.";
+        } else if (error.message.includes("Invalid email address.")) {
+          errorMessage = "유효하지 않은 이메일 주소입니다.";
+        }
+        else {
+          errorMessage = error.message; // Fallback to generic message if not recognized
+        }
+      }
+      Alert.alert("로그인 실패", errorMessage);
     } finally {
       setLoading(false);
     }

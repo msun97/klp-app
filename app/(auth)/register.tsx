@@ -19,7 +19,24 @@ export default function Register() {
       Alert.alert("회원가입 성공", "계정이 성공적으로 생성되었습니다. 로그인 해주세요.");
       router.replace("/login");
     } catch (error) {
-      Alert.alert("회원가입 실패", error.message);
+      let errorMessage = "알 수 없는 오류가 발생했습니다.";
+      if (error.message) {
+        if (error.message.includes("auth/email-already-in-use")) {
+          errorMessage = "이미 사용 중인 이메일 주소입니다.";
+        } else if (error.message.includes("auth/invalid-email")) {
+          errorMessage = "유효하지 않은 이메일 주소입니다.";
+        } else if (error.message.includes("auth/weak-password")) {
+          errorMessage = "비밀번호는 6자 이상이어야 합니다.";
+        } else if (error.message.includes("Password must be at least 6 characters long.")) {
+          errorMessage = "비밀번호는 6자 이상이어야 합니다.";
+        } else if (error.message.includes("Invalid email address.")) {
+          errorMessage = "유효하지 않은 이메일 주소입니다.";
+        }
+        else {
+          errorMessage = error.message; // Fallback to generic message if not recognized
+        }
+      }
+      Alert.alert("회원가입 실패", errorMessage);
     } finally {
       setLoading(false);
     }
