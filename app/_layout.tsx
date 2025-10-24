@@ -1,10 +1,10 @@
-import { Slot, Stack, useSegments, useRouter } from 'expo-router';
-import { AuthProvider, useAuth } from '../lib/AuthContext';
-import { ActivityIndicator, View } from 'react-native';
+import { Stack, useRouter, useSegments } from 'expo-router';
 import { useEffect } from 'react';
+import { ActivityIndicator, View } from 'react-native';
+import { AuthProvider, useAuth } from '../lib/AuthContext';
 
 function RootLayoutContent() {
-  const { user, loading } = useAuth();
+  const { user, loading } = useAuth() as any;
   const segments = useSegments();
   const router = useRouter();
 
@@ -13,13 +13,14 @@ function RootLayoutContent() {
 
     const inAuthGroup = segments[0] === '(auth)';
 
-    if (user && !inAuthGroup) {
-      // User is authenticated, but not in the auth stack, redirect to app
+    if (user && inAuthGroup) {
+      // 로그인됨 + auth 화면에 있음 → main으로
       router.replace('/(main)');
-    } else if (!user && inAuthGroup) {
-      // User is not authenticated, but in the app stack, redirect to auth
-      router.replace('/login');
+    } else if (!user && !inAuthGroup) {
+      // 로그인 안됨 + auth 화면 아님 → login으로
+      router.replace('/(auth)/login');
     }
+    // 로그인 안됨 + auth 화면 → 그대로 (register 이동 가능!)
   }, [user, loading, segments]);
 
   if (loading) {
@@ -31,9 +32,9 @@ function RootLayoutContent() {
   }
 
   return (
-    <Stack>
-      <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-      <Stack.Screen name="(main)" options={{ headerShown: false }} />
+    <Stack screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="(auth)" />
+      <Stack.Screen name="(main)" />
     </Stack>
   );
 }
