@@ -2,17 +2,21 @@ import { Stack, useLocalSearchParams } from "expo-router";
 import { useEffect, useState } from "react";
 import { View, Text, ActivityIndicator, StyleSheet, Alert, Image, ScrollView, FlatList, TextInput, TouchableOpacity } from "react-native";
 import { getPost } from "../../../lib/firestore/posts";
-import { createComment, getComments } from "../../../lib/firestore/comments"; // Import comment functions
-import { useAuth } from "../../../lib/AuthContext"; // Import useAuth
-import { collection, query, orderBy, onSnapshot } from "firebase/firestore"; // Import Firestore functions for comments
-import { db } from "../../../lib/firebase/firebaseConfig"; // Import db
+import { createComment } from "../../../lib/firestore/comments";
+import { useAuth } from "../../../lib/AuthContext";
+import { collection, query, orderBy, onSnapshot } from "firebase/firestore";
+import { db } from "../../../lib/firebase/firebaseConfig";
+import { toggleLike, hasLiked } from "../../../lib/firestore/likes"; // Import like functions
+import { IconSymbol } from "@/components/ui/icon-symbol"; // Import IconSymbol for like button
 
 export default function PostDetailScreen() {
   const { id } = useLocalSearchParams();
-  const { user } = useAuth(); // Get current user
+  const { user } = useAuth();
   const [post, setPost] = useState(null);
   const [loadingPost, setLoadingPost] = useState(true);
   const [postError, setPostError] = useState(null);
+  const [isLiked, setIsLiked] = useState(false); // New state for like status
+  const [liking, setLiking] = useState(false); // New state for liking action
 
   const [comments, setComments] = useState([]);
   const [commentInput, setCommentInput] = useState("");
@@ -31,6 +35,10 @@ export default function PostDetailScreen() {
         const fetchedPost = await getPost(id);
         if (fetchedPost) {
           setPost(fetchedPost);
+          if (user) { // Check like status only if user is logged in
+            const liked = await hasLiked(id, user.uid);
+            setIsLiked(liked);
+          }
         } else {
           setPostError("게시글을 찾을 수 없습니다.");
         }
@@ -43,7 +51,7 @@ export default function PostDetailScreen() {
     };
 
     fetchPost();
-  }, [id]);
+  }, [id, user]); // Add user to dependency array to re-check like status on auth change
 
   // Listen for Comments
   useEffect(() => {
@@ -92,6 +100,28 @@ export default function PostDetailScreen() {
     }
   };
 
+  const handleToggleLike = async () => {
+    if (!user) {
+      Alert.alert("오류", "로그인 후 좋아요를 누를 수 있습니다.");
+      return;
+    }
+    setLiking(true);
+    try {
+      const newLikedStatus = await toggleLike(id, user.uid);
+      setIsLiked(newLikedStatus);
+      // Optionally, update post.likesCount locally for immediate feedback
+      setPost(prevPost => ({
+        ...prevPost,
+        likesCount: (prevPost.likesCount || 0) + (newLikedStatus ? 1 : -1)
+      }));
+    } catch (error) {
+      console.error("Error toggling like: ", error);
+      Alert.alert("오류", "좋아요 처리에 실패했습니다.");
+    } finally {
+      setLiking(false);
+    }
+  };
+
   if (loadingPost) {
     return (
       <View style={styles.loadingContainer}>
@@ -134,6 +164,20 @@ export default function PostDetailScreen() {
         )}
 
         <Text style={styles.content}>{post.content}</Text>
+
+        {/* Like Button and Count */}
+        <View style={styles.likeSection}>
+          <TouchableOpacity onPress={handleToggleLike} disabled={liking} style={styles.likeButton}>
+            <IconSymbol
+              name={isLiked ? "heart.fill" : "heart"}
+              size={24}
+              color={isLiked ? "red" : "#888"}
+            />
+            <Text style={styles.likeButtonText}>{post.likesCount || 0}</Text>
+          </TouchableOpacity>
+          <Text style={styles.commentCountText}>댓글 {comments.length}</Text>
+        </View>
+
 
         {/* Comments Section */}
         <View style={styles.commentsSection}>
@@ -245,7 +289,33 @@ const styles = StyleSheet.create({
     fontSize: 16,
     lineHeight: 24,
     color: "#444",
-    marginBottom: 20, // Add margin bottom for comments section
+    marginBottom: 20,
+  },
+  likeSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 20,
+    borderTopWidth: 1,
+    borderTopColor: "#eee",
+    paddingTop: 15,
+  },
+  likeButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 8,
+    borderRadius: 5,
+    backgroundColor: '#f0f0f0',
+    marginRight: 15,
+  },
+  likeButtonText: {
+    marginLeft: 5,
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  commentCountText: {
+    fontSize: 16,
+    color: '#666',
   },
   commentsSection: {
     marginTop: 20,
