@@ -1,8 +1,10 @@
 import { useRouter } from "expo-router";
 import { useState } from "react";
-import { Text, TextInput, TouchableOpacity, View, Alert, StyleSheet, ActivityIndicator } from "react-native";
+import { Text, TextInput, TouchableOpacity, View, Alert, StyleSheet, ActivityIndicator, Image } from "react-native";
 import { useAuth } from "../../lib/AuthContext";
-import { createPost } from "../../lib/firestore/posts"; // Adjust path as needed
+import { createPost } from "../../lib/firestore/posts";
+import * as ImagePicker from 'expo-image-picker'; // Import ImagePicker
+import { uploadImageAndGetURL } from "../../lib/firebase/storage"; // Import uploadImageAndGetURL
 
 export default function WritePost() {
   const router = useRouter();
@@ -10,6 +12,27 @@ export default function WritePost() {
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [loading, setLoading] = useState(false);
+  const [imageUri, setImageUri] = useState(null); // New state for selected image URI
+
+  const pickImage = async () => {
+    // Request media library permissions
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('권한 필요', '이미지를 선택하려면 미디어 라이브러리 접근 권한이 필요합니다.');
+      return;
+    }
+
+    let result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [4, 3],
+      quality: 1,
+    });
+
+    if (!result.canceled) {
+      setImageUri(result.assets[0].uri);
+    }
+  };
 
   const handleCreatePost = async () => {
     if (!user) {
@@ -28,12 +51,20 @@ export default function WritePost() {
     }
 
     setLoading(true);
+    let imageUrl = null;
     try {
+      if (imageUri) {
+        // Upload image to Firebase Storage
+        const imagePath = `post_images/${user.uid}/${Date.now()}`;
+        imageUrl = await uploadImageAndGetURL(imageUri, imagePath);
+      }
+
       await createPost({
         title,
         content,
         authorId: user.uid,
-        authorEmail: user.email, // Store author's email for display
+        authorEmail: user.email,
+        imageUrl: imageUrl, // Store image URL in Firestore
       });
       Alert.alert("성공", "게시글이 성공적으로 작성되었습니다.");
       router.back(); // Go back to the post list
@@ -62,6 +93,14 @@ export default function WritePost() {
         style={[styles.input, styles.contentInput]}
         editable={!loading}
       />
+
+      <TouchableOpacity onPress={pickImage} style={styles.imagePickerButton} disabled={loading}>
+        <Text style={styles.imagePickerButtonText}>이미지 선택</Text>
+      </TouchableOpacity>
+
+      {imageUri && (
+        <Image source={{ uri: imageUri }} style={styles.previewImage} />
+      )}
 
       <TouchableOpacity
         onPress={handleCreatePost}
@@ -94,8 +133,27 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   contentInput: {
+    height: 150, // Adjusted height to make space for image picker
+    textAlignVertical: "top",
+  },
+  imagePickerButton: {
+    backgroundColor: "#6c757d",
+    padding: 12,
+    borderRadius: 8,
+    alignItems: "center",
+    marginBottom: 15,
+  },
+  imagePickerButtonText: {
+    color: "white",
+    fontSize: 16,
+    fontWeight: "bold",
+  },
+  previewImage: {
+    width: "100%",
     height: 200,
-    textAlignVertical: "top", // For Android to start text at top
+    resizeMode: "cover",
+    borderRadius: 8,
+    marginBottom: 15,
   },
   button: {
     backgroundColor: "#4F46E5",
