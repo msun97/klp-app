@@ -2,6 +2,7 @@ import { useRouter } from "expo-router";
 import { useState } from "react";
 import { Text, TextInput, TouchableOpacity, View, Alert, StyleSheet } from "react-native";
 import { useAuth } from "../../lib/AuthContext";
+import { IconSymbol } from "@/components/ui/icon-symbol"; // Import IconSymbol
 
 export default function Login() {
   const router = useRouter();
@@ -9,6 +10,7 @@ export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false); // New state for password visibility
 
   const handleLogin = async () => {
     setLoading(true);
@@ -34,13 +36,25 @@ export default function Login() {
         keyboardType="email-address"
         autoCapitalize="none"
       />
-      <TextInput
-        placeholder="비밀번호"
-        secureTextEntry
-        value={password}
-        onChangeText={setPassword}
-        style={styles.input}
-      />
+      <View style={styles.passwordInputContainer}>
+        <TextInput
+          placeholder="비밀번호"
+          secureTextEntry={!showPassword} // Toggle secureTextEntry
+          value={password}
+          onChangeText={setPassword}
+          style={styles.passwordInput}
+        />
+        <TouchableOpacity
+          onPress={() => setShowPassword(!showPassword)}
+          style={styles.passwordVisibilityToggle}
+        >
+          <IconSymbol
+            name={showPassword ? "eye.slash.fill" : "eye.fill"} // Change icon based on visibility
+            size={24}
+            color="#888"
+          />
+        </TouchableOpacity>
+      </View>
 
       <TouchableOpacity
         onPress={handleLogin}
@@ -50,7 +64,7 @@ export default function Login() {
         <Text style={styles.buttonText}>{loading ? "로그인 중..." : "로그인"}</Text>
       </TouchableOpacity>
 
-      <TouchableOpacity onPress={() => router.push("/register")} style={styles.linkButton}>
+      <TouchableOpacity onPress={() => router.push("register")} style={styles.linkButton}>
         <Text style={styles.linkButtonText}>회원가입</Text>
       </TouchableOpacity>
     </View>
@@ -79,6 +93,23 @@ const styles = StyleSheet.create({
     padding: 12,
     borderRadius: 8,
     fontSize: 16,
+  },
+  passwordInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: "#ddd",
+    backgroundColor: "#fff",
+    marginBottom: 20,
+    borderRadius: 8,
+  },
+  passwordInput: {
+    flex: 1,
+    padding: 12,
+    fontSize: 16,
+  },
+  passwordVisibilityToggle: {
+    padding: 10,
   },
   button: {
     backgroundColor: "#4F46E5",
